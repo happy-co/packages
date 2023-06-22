@@ -114,6 +114,11 @@ class Camera
 
   private final SurfaceTextureEntry flutterTexture;
   private final ResolutionPreset resolutionPreset;
+
+  private final CaptureMode captureMode;
+
+  private final AspectRatioPreset aspectRatioPreset;
+
   private final boolean enableAudio;
   private final Context applicationContext;
   final DartMessenger dartMessenger;
