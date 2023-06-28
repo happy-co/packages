@@ -6,16 +6,19 @@ package io.flutter.plugins.camera.features.resolution;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.graphics.ImageFormat;
 import android.hardware.camera2.CaptureRequest;
 import android.media.CamcorderProfile;
 import android.media.EncoderProfiles;
 import android.os.Build;
+import android.util.Log;
 import android.util.Size;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import io.flutter.plugins.camera.CameraProperties;
 import io.flutter.plugins.camera.features.CameraFeature;
+import io.flutter.plugins.camera.types.CaptureMode;
 import java.util.List;
 
 /**
@@ -32,6 +35,7 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
   private EncoderProfiles recordingProfile;
   @NonNull private ResolutionPreset currentSetting;
   private int cameraId;
+  @NonNull private CaptureMode captureMode;
 
   /**
    * Creates a new instance of the {@link ResolutionFeature}.
@@ -43,16 +47,18 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
   public ResolutionFeature(
       @NonNull CameraProperties cameraProperties,
       @NonNull ResolutionPreset resolutionPreset,
-      @NonNull String cameraName) {
+      @NonNull String cameraName,
+      @NonNull CaptureMode captureMode) {
     super(cameraProperties);
     this.currentSetting = resolutionPreset;
+    this.captureMode = captureMode;
     try {
       this.cameraId = Integer.parseInt(cameraName, 10);
     } catch (NumberFormatException e) {
       this.cameraId = -1;
       return;
     }
-    configureResolution(resolutionPreset, cameraId);
+    configureResolution(resolutionPreset, cameraId, captureMode, cameraProperties.getAvailableOutputSizes(ImageFormat.PRIVATE));
   }
 
   /**
@@ -107,7 +113,9 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
   @Override
   public void setValue(@NonNull ResolutionPreset value) {
     this.currentSetting = value;
-    configureResolution(currentSetting, cameraId);
+    // TODO
+    Log.d("RESOLUTION", "setValue: " + value.toString());
+    configureResolution(currentSetting, cameraId, captureMode, cameraProperties.getAvailableOutputSizes(ImageFormat.PRIVATE));
   }
 
   @Override
@@ -120,11 +128,40 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
     // No-op: when setting a resolution there is no need to update the request builder.
   }
 
+  static int gcd (int a, int b) {
+    return (b == 0) ? a : gcd (b, a%b);
+  }
+
   @VisibleForTesting
-  static Size computeBestPreviewSize(int cameraId, ResolutionPreset preset)
+  static Size computeBestPreviewSize(int cameraId, ResolutionPreset preset, CaptureMode captureMode, Size[] availableOutputSizes)
       throws IndexOutOfBoundsException {
     if (preset.ordinal() > ResolutionPreset.high.ordinal()) {
       preset = ResolutionPreset.high;
+    }
+    if (captureMode == CaptureMode.photo) {
+      // Using max resolution for the preview is not a good use of system resources.
+      // Limiting the max resolution used for the preview to 1080p. is a good balance.
+      // When the capture mode is photo, the preview size should be a 4:3 aspect ratio.
+      Size selectedPreviewResolution = null;
+      int currentHighestPixel = 0;
+      for (int i = 0; i < availableOutputSizes.length; i++) {
+        // calculate aspect ratio and prints as 4:3 or 16:9, etc.
+        int factor =  gcd(availableOutputSizes[i].getWidth(), availableOutputSizes[i].getHeight());
+        int widthRatio = availableOutputSizes[i].getWidth() / factor;
+        int heightRatio = availableOutputSizes[i].getHeight() / factor;
+
+        Log.d("RESOLUTION", availableOutputSizes[i].toString() + "Aspect Ratio: " + widthRatio + ":" + heightRatio);
+        if (widthRatio == 4 && heightRatio == 3 && availableOutputSizes[i].getHeight() == 1080) {
+          if (availableOutputSizes[i].getWidth() * availableOutputSizes[i].getHeight() > currentHighestPixel) {
+            selectedPreviewResolution = availableOutputSizes[i];
+            currentHighestPixel = availableOutputSizes[i].getWidth() * availableOutputSizes[i].getHeight();
+          }
+        }
+      }
+      if (selectedPreviewResolution != null) {
+        Log.d( "RESOLUTION PICKED", selectedPreviewResolution.toString() );
+        return selectedPreviewResolution;
+      }
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       EncoderProfiles profile =
@@ -261,14 +298,27 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
     }
   }
 
-  private void configureResolution(ResolutionPreset resolutionPreset, int cameraId)
+  private void configureResolution(ResolutionPreset resolutionPreset, int cameraId, CaptureMode captureMode, Size[] availableOutputSizes)
       throws IndexOutOfBoundsException {
     if (!checkIsSupported()) {
       return;
     }
-    boolean captureSizeCalculated = false;
+    // Attempt to select the highest resolution from the available ones when in photo mode.
+    if (captureMode == CaptureMode.photo) {
+      Size actualMaxResolution = null;
+      int maxMegapixel = 0;
+      for (int i = 0; i < availableOutputSizes.length; i++) {
+        Log.d("RESOLUTION", availableOutputSizes[i].toString());
+        if (availableOutputSizes[i].getWidth() * availableOutputSizes[i].getHeight() > maxMegapixel) {
+          actualMaxResolution = availableOutputSizes[i];
+          maxMegapixel = availableOutputSizes[i].getWidth() * availableOutputSizes[i].getHeight();
+        }
+      }
+      Log.d( "RESOLUTION PICKED", actualMaxResolution.toString());
+      captureSize = actualMaxResolution;
+    }
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    if (captureSize == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       recordingProfileLegacy = null;
       recordingProfile =
           getBestAvailableCamcorderProfileForResolutionPreset(cameraId, resolutionPreset);
@@ -277,12 +327,11 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
       EncoderProfiles.VideoProfile defaultVideoProfile = videoProfiles.get(0);
 
       if (defaultVideoProfile != null) {
-        captureSizeCalculated = true;
         captureSize = new Size(defaultVideoProfile.getWidth(), defaultVideoProfile.getHeight());
       }
     }
 
-    if (!captureSizeCalculated) {
+    if (captureSize == null) {
       recordingProfile = null;
       CamcorderProfile camcorderProfile =
           getBestAvailableCamcorderProfileForResolutionPresetLegacy(cameraId, resolutionPreset);
@@ -291,6 +340,6 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
           new Size(recordingProfileLegacy.videoFrameWidth, recordingProfileLegacy.videoFrameHeight);
     }
 
-    previewSize = computeBestPreviewSize(cameraId, resolutionPreset);
+    previewSize = computeBestPreviewSize(cameraId, resolutionPreset, captureMode, availableOutputSizes);
   }
 }

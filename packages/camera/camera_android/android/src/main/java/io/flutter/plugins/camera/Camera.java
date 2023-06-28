@@ -12,6 +12,7 @@ import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
@@ -62,6 +63,7 @@ import io.flutter.plugins.camera.media.ImageStreamReader;
 import io.flutter.plugins.camera.media.MediaRecorderBuilder;
 import io.flutter.plugins.camera.types.CameraCaptureProperties;
 import io.flutter.plugins.camera.types.CaptureTimeoutsWrapper;
+import io.flutter.plugins.camera.types.CaptureMode;
 import io.flutter.view.TextureRegistry.SurfaceTextureEntry;
 import java.io.File;
 import java.io.IOException;
@@ -114,11 +116,7 @@ class Camera
 
   private final SurfaceTextureEntry flutterTexture;
   private final ResolutionPreset resolutionPreset;
-
   private final CaptureMode captureMode;
-
-  private final AspectRatioPreset aspectRatioPreset;
-
   private final boolean enableAudio;
   private final Context applicationContext;
   final DartMessenger dartMessenger;
@@ -199,6 +197,7 @@ class Camera
       final DartMessenger dartMessenger,
       final CameraProperties cameraProperties,
       final ResolutionPreset resolutionPreset,
+      final CaptureMode captureMode,
       final boolean enableAudio) {
 
     if (activity == null) {
@@ -212,9 +211,10 @@ class Camera
     this.cameraProperties = cameraProperties;
     this.cameraFeatureFactory = cameraFeatureFactory;
     this.resolutionPreset = resolutionPreset;
+    this.captureMode = captureMode;
     this.cameraFeatures =
         CameraFeatures.init(
-            cameraFeatureFactory, cameraProperties, activity, dartMessenger, resolutionPreset);
+            cameraFeatureFactory, cameraProperties, activity, dartMessenger, resolutionPreset, captureMode);
 
     // Create capture callback.
     captureTimeouts = new CaptureTimeoutsWrapper(3000, 3000);
@@ -284,6 +284,8 @@ class Camera
   public void open(String imageFormatGroup) throws CameraAccessException {
     this.imageFormatGroup = imageFormatGroup;
     final ResolutionFeature resolutionFeature = cameraFeatures.getResolution();
+    Log.d(TAG, "captureSize: " + resolutionFeature.getCaptureSize().toString());
+    Log.d(TAG, "previewSize: " + resolutionFeature.getPreviewSize().toString());
 
     if (!resolutionFeature.checkIsSupported()) {
       // Tell the user that the camera they are trying to open is not supported,
@@ -408,16 +410,19 @@ class Camera
 
     // Create a new capture builder.
     previewRequestBuilder = cameraDevice.createCaptureRequest(templateType);
+    Log.d(TAG, "scalar1"  + previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION).toString());
+    Log.d(TAG, "zoom1"  + previewRequestBuilder.get(CaptureRequest.CONTROL_ZOOM_RATIO).toString());
+
 
     // Build Flutter surface to render to.
     ResolutionFeature resolutionFeature = cameraFeatures.getResolution();
     SurfaceTexture surfaceTexture = flutterTexture.surfaceTexture();
+    Log.i(TAG, "previewSize: " + resolutionFeature.getPreviewSize().toString());
     surfaceTexture.setDefaultBufferSize(
         resolutionFeature.getPreviewSize().getWidth(),
         resolutionFeature.getPreviewSize().getHeight());
     Surface flutterSurface = new Surface(surfaceTexture);
     previewRequestBuilder.addTarget(flutterSurface);
-
     List<Surface> remainingSurfaces = Arrays.asList(surfaces);
     if (templateType != CameraDevice.TEMPLATE_PREVIEW) {
       // If it is not preview mode, add all surfaces as targets
@@ -431,12 +436,19 @@ class Camera
         previewRequestBuilder.addTarget(surface);
       }
     }
+    Log.d(TAG, "scalar2"  + previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION).toString());
+    previewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, cameraProperties.getSensorInfoActiveArraySize());
+    Log.d(TAG, "hardcoded"  + previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION).toString());
 
+    Log.d(TAG, "zoom2"  + previewRequestBuilder.get(CaptureRequest.CONTROL_ZOOM_RATIO).toString());
     // Update camera regions.
     Size cameraBoundaries =
         CameraRegionUtils.getCameraBoundaries(cameraProperties, previewRequestBuilder);
     cameraFeatures.getExposurePoint().setCameraBoundaries(cameraBoundaries);
     cameraFeatures.getFocusPoint().setCameraBoundaries(cameraBoundaries);
+    Log.i(TAG, "cameraBoundaires: " +cameraBoundaries.toString());
+    Log.d(TAG, "scalar3"  + previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION).toString());
+    Log.d(TAG, "zoom3"  + previewRequestBuilder.get(CaptureRequest.CONTROL_ZOOM_RATIO).toString());
 
     // Prepare the callback.
     CameraCaptureSession.StateCallback callback =
@@ -455,6 +467,8 @@ class Camera
 
             Log.i(TAG, "Updating builder settings");
             updateBuilderSettings(previewRequestBuilder);
+            Log.d(TAG, "scalar4"  + previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION).toString());
+            Log.d(TAG, "zoom4"  + previewRequestBuilder.get(CaptureRequest.CONTROL_ZOOM_RATIO).toString());
 
             refreshPreviewCaptureSession(
                 onSuccessCallback, (code, message) -> dartMessenger.sendCameraErrorEvent(message));
@@ -545,7 +559,10 @@ class Camera
     Runnable successCallback = null;
     if (record) {
       surfaces.add(mediaRecorder.getSurface());
-      successCallback = () -> mediaRecorder.start();
+      successCallback = () -> {       Log.d(TAG, "scalar6"  + previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION).toString());
+        Log.d(TAG, "zoom5"  + previewRequestBuilder.get(CaptureRequest.CONTROL_ZOOM_RATIO).toString());
+
+        mediaRecorder.start();};
     }
     if (stream && imageStreamReader != null) {
       surfaces.add(imageStreamReader.getSurface());
@@ -615,6 +632,14 @@ class Camera
       previewRequestBuilder.set(
           CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
           CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+
+//      previewRequestBuilder.set(
+//              CaptureRequest.SCALER_CROP_REGION,
+//
+//
+//      );
+
+      Log.d(TAG, "scalar"  + previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION).toString());
 
       // Trigger one capture to start AE sequence.
       captureSession.capture(
@@ -1317,7 +1342,7 @@ class Camera
     cameraProperties = properties;
     cameraFeatures =
         CameraFeatures.init(
-            cameraFeatureFactory, cameraProperties, activity, dartMessenger, resolutionPreset);
+            cameraFeatureFactory, cameraProperties, activity, dartMessenger, resolutionPreset, captureMode);
     cameraFeatures.setAutoFocus(
         cameraFeatureFactory.createAutoFocusFeature(cameraProperties, true));
     try {
