@@ -1,3 +1,7 @@
+## 2.5.3
+
+* Adds `CaptureMode` as a parameter to allow configuring the camera for taking photos or videos. `CaptureMode.photo` selects an appropriate 4:3 aspect ratio depending on the `ResolutionPreset`.
+
 ## 2.5.2
 
 * Adds pub topics to package metadata.

@@ -1,3 +1,7 @@
+## 0.10.9
+
+* Adds `CaptureMode` as a parameter to allow configuring the camera for taking photos or videos. `CaptureMode.photo` selects an appropriate 4:3 aspect ratio depending on the `ResolutionPreset`.
+
 ## 0.10.8+11
 
 * Downgrades AGP version for compatibility with legacy projects.
