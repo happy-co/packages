@@ -468,14 +468,13 @@ NSString *const errorMethod = @"error";
 
 - (void)setCaptureSessionWithResolutionPreset:(FLTResolutionPreset)resolutionPreset
                               withCaptureMode: (FLTCaptureMode) captureMode {
-  NSArray<AVCaptureDeviceFormat *> *formats = _captureDevice.formats;
   if (captureMode == FLTCaptureModeVideo) {
     [self setCaptureSessionForVideo:resolutionPreset];
   } else if (captureMode == FLTCaptureModePhoto) {
     [self setCaptureSessionForPhoto:resolutionPreset];
+    CMVideoDimensions previewDimensions = CMVideoFormatDescriptionGetDimensions(_captureDevice.activeFormat.formatDescription);
+    _previewSize = CGSizeMake(previewDimensions.width, previewDimensions.height);
   }
-  CMVideoDimensions previewDimensions = CMVideoFormatDescriptionGetDimensions(_captureDevice.activeFormat.formatDescription);
-  _previewSize = CGSizeMake(previewDimensions.width, previewDimensions.height);
   _audioCaptureSession.sessionPreset = _videoCaptureSession.sessionPreset;
 }
 

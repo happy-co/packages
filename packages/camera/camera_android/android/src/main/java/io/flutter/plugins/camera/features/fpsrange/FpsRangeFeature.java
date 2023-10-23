@@ -49,6 +49,7 @@ public class FpsRangeFeature extends CameraFeature<Range<Integer>> {
           int upper = range.getUpper();
           // When in photo mode, the upper bound is 30 fps or the aspect ratio/resolution will be
           // changed by the camera session.
+          Log.e("FpsRangeFeature", "upper: " + upper + " captureMode: " + captureMode);
           if (upper >= 10 && (upper < 60 || captureMode != CaptureMode.photo)) {
             if (currentSetting == null || upper > currentSetting.getUpper()) {
               currentSetting = range;
