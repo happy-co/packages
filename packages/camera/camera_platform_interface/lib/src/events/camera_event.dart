@@ -58,6 +58,7 @@ class CameraInitializedEvent extends CameraEvent {
     this.exposurePointSupported,
     this.focusMode,
     this.focusPointSupported,
+    this.captureMode,
   );
 
   /// Converts the supplied [Map] to an instance of the [CameraInitializedEvent]
@@ -70,6 +71,9 @@ class CameraInitializedEvent extends CameraEvent {
             (json['exposurePointSupported'] as bool?) ?? false,
         focusMode = deserializeFocusMode(json['focusMode']! as String),
         focusPointSupported = (json['focusPointSupported'] as bool?) ?? false,
+        captureMode = (json['captureMode'] != null)
+            ? CaptureMode.deserialize(json['captureMode']! as String)
+            : CaptureMode.video,
         super(json['cameraId']! as int);
 
   /// The width of the preview in pixels.
@@ -83,6 +87,9 @@ class CameraInitializedEvent extends CameraEvent {
 
   /// The default focus mode
   final FocusMode focusMode;
+
+  /// The default capture mode
+  final CaptureMode captureMode;
 
   /// Whether setting exposure points is supported.
   final bool exposurePointSupported;
@@ -100,6 +107,7 @@ class CameraInitializedEvent extends CameraEvent {
         'exposurePointSupported': exposurePointSupported,
         'focusMode': serializeFocusMode(focusMode),
         'focusPointSupported': focusPointSupported,
+        'captureMode': captureMode.name,
       };
 
   @override
@@ -113,7 +121,8 @@ class CameraInitializedEvent extends CameraEvent {
           exposureMode == other.exposureMode &&
           exposurePointSupported == other.exposurePointSupported &&
           focusMode == other.focusMode &&
-          focusPointSupported == other.focusPointSupported;
+          focusPointSupported == other.focusPointSupported &&
+          captureMode == other.captureMode;
 
   @override
   int get hashCode => Object.hash(
@@ -124,6 +133,7 @@ class CameraInitializedEvent extends CameraEvent {
         exposurePointSupported,
         focusMode,
         focusPointSupported,
+        captureMode,
       );
 }
 

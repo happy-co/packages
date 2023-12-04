@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import io.flutter.plugins.camera.CameraProperties;
 import io.flutter.plugins.camera.DeviceInfo;
 import io.flutter.plugins.camera.features.CameraFeature;
+import io.flutter.plugins.camera.types.CaptureMode;
 
 /**
  * Controls the frames per seconds (FPS) range configuration on the {@link android.hardware.camera2}
@@ -20,14 +21,16 @@ import io.flutter.plugins.camera.features.CameraFeature;
 public class FpsRangeFeature extends CameraFeature<Range<Integer>> {
   private static final Range<Integer> MAX_PIXEL4A_RANGE = new Range<>(30, 30);
   @Nullable private Range<Integer> currentSetting;
-
+  @NonNull private CaptureMode captureMode;
   /**
    * Creates a new instance of the {@link FpsRangeFeature}.
    *
    * @param cameraProperties Collection of characteristics for the current camera device.
    */
-  public FpsRangeFeature(@NonNull CameraProperties cameraProperties) {
+  public FpsRangeFeature(
+      @NonNull CameraProperties cameraProperties, @NonNull CaptureMode captureMode) {
     super(cameraProperties);
+    this.captureMode = captureMode;
 
     if (isPixel4A()) {
       // HACK: There is a bug in the Pixel 4A where it cannot support 60fps modes
@@ -43,8 +46,9 @@ public class FpsRangeFeature extends CameraFeature<Range<Integer>> {
       if (ranges != null) {
         for (Range<Integer> range : ranges) {
           int upper = range.getUpper();
-
-          if (upper >= 10) {
+          // When in photo mode, the upper bound is 30 fps or the aspect ratio/resolution will be
+          // changed by the camera session.
+          if (upper >= 10 && (upper < 60 || captureMode != CaptureMode.photo)) {
             if (currentSetting == null || upper > currentSetting.getUpper()) {
               currentSetting = range;
             }

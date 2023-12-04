@@ -273,6 +273,13 @@ abstract class CameraPlatform extends PlatformInterface {
     throw UnimplementedError('setZoomLevel() is not implemented.');
   }
 
+  /// Set the capture mode for the selected camera.
+  ///
+  /// See [CaptureMode] for more information.
+  Future<Size?> setCaptureMode(int cameraId, CaptureMode mode) {
+    throw UnimplementedError('setCaptureMode() is not implemented.');
+  }
+
   /// Pause the active preview on the current frame for the selected camera.
   Future<void> pausePreview(int cameraId) {
     throw UnimplementedError('pausePreview() is not implemented.');

@@ -59,6 +59,7 @@ import io.flutter.plugins.camera.features.zoomlevel.ZoomLevelFeature;
 import io.flutter.plugins.camera.media.ImageStreamReader;
 import io.flutter.plugins.camera.media.MediaRecorderBuilder;
 import io.flutter.plugins.camera.types.CameraCaptureProperties;
+import io.flutter.plugins.camera.types.CaptureMode;
 import io.flutter.plugins.camera.types.CaptureTimeoutsWrapper;
 import io.flutter.view.TextureRegistry.SurfaceTextureEntry;
 import java.io.File;
@@ -68,6 +69,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Executors;
 
 @FunctionalInterface
@@ -207,7 +209,12 @@ class Camera
     this.resolutionPreset = resolutionPreset;
     this.cameraFeatures =
         CameraFeatures.init(
-            cameraFeatureFactory, cameraProperties, activity, dartMessenger, resolutionPreset);
+            cameraFeatureFactory,
+            cameraProperties,
+            activity,
+            dartMessenger,
+            resolutionPreset,
+            CaptureMode.video);
 
     // Create capture callback.
     captureTimeouts = new CaptureTimeoutsWrapper(3000, 3000);
@@ -326,7 +333,8 @@ class Camera
                     cameraFeatures.getExposureLock().getValue(),
                     cameraFeatures.getAutoFocus().getValue(),
                     cameraFeatures.getExposurePoint().checkIsSupported(),
-                    cameraFeatures.getFocusPoint().checkIsSupported());
+                    cameraFeatures.getFocusPoint().checkIsSupported(),
+                    resolutionFeature.getCaptureMode());
               }
             } catch (Exception e) {
               if (BuildConfig.DEBUG) {
@@ -409,7 +417,6 @@ class Camera
         resolutionFeature.getPreviewSize().getHeight());
     Surface flutterSurface = new Surface(surfaceTexture);
     previewRequestBuilder.addTarget(flutterSurface);
-
     List<Surface> remainingSurfaces = Arrays.asList(surfaces);
     if (templateType != CameraDevice.TEMPLATE_PREVIEW) {
       // If it is not preview mode, add all surfaces as targets
@@ -502,7 +509,7 @@ class Camera
     cameraDevice.createCaptureSession(surfaces, callback, backgroundHandler);
   }
 
-  // Send a repeating request to refresh  capture session.
+  // Send a repeating request to refresh capture session.
   void refreshPreviewCaptureSession(
       @Nullable Runnable onSuccessCallback, @NonNull ErrorCallback onErrorCallback) {
     Log.i(TAG, "refreshPreviewCaptureSession");
@@ -973,6 +980,36 @@ class Camera
   }
 
   /**
+   * Sets new capture mode from dart
+   *
+   * @param result Flutter result.
+   * @param newMode New mode.
+   */
+  public void setCaptureMode(@NonNull final Result result, @NonNull CaptureMode newMode) {
+    // Re-initalises the camera with the appropriate capture mode.
+    stopAndReleaseCamera();
+    cameraFeatures =
+        CameraFeatures.init(
+            cameraFeatureFactory,
+            cameraProperties,
+            activity,
+            dartMessenger,
+            resolutionPreset,
+            newMode);
+    try {
+      open(imageFormatGroup);
+    } catch (CameraAccessException e) {
+      result.error("setDescriptionWhileRecordingFailed", e.getMessage(), null);
+    }
+
+    final ResolutionFeature resolutionFeature = cameraFeatures.getResolution();
+    Map<String, Integer> previewSize = new HashMap<String, Integer>();
+    previewSize.put("previewWidth", resolutionFeature.getPreviewSize().getWidth());
+    previewSize.put("previewHeight", resolutionFeature.getPreviewSize().getHeight());
+    result.success(previewSize);
+  }
+
+  /**
    * Sets new focus point from dart.
    *
    * @param result Flutter result.
@@ -1309,7 +1346,12 @@ class Camera
     cameraProperties = properties;
     cameraFeatures =
         CameraFeatures.init(
-            cameraFeatureFactory, cameraProperties, activity, dartMessenger, resolutionPreset);
+            cameraFeatureFactory,
+            cameraProperties,
+            activity,
+            dartMessenger,
+            resolutionPreset,
+            cameraFeatures.getResolution().getCaptureMode());
     cameraFeatures.setAutoFocus(
         cameraFeatureFactory.createAutoFocusFeature(cameraProperties, true));
     try {

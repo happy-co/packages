@@ -23,6 +23,7 @@ import io.flutter.plugins.camera.features.autofocus.FocusMode;
 import io.flutter.plugins.camera.features.exposurelock.ExposureMode;
 import io.flutter.plugins.camera.features.flash.FlashMode;
 import io.flutter.plugins.camera.features.resolution.ResolutionPreset;
+import io.flutter.plugins.camera.types.CaptureMode;
 import io.flutter.view.TextureRegistry;
 import java.util.HashMap;
 import java.util.Map;
@@ -374,6 +375,21 @@ final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
           result.success(null);
           break;
         }
+      case "setCaptureMode":
+        {
+          String modeStr = call.argument("mode");
+          CaptureMode mode = CaptureMode.getValueForString(modeStr);
+          if (mode == null) {
+            result.error("setCaptureModeFailed", "Unknown capture mode " + modeStr, null);
+            return;
+          }
+          try {
+            camera.setCaptureMode(result, mode);
+          } catch (Exception e) {
+            handleException(e, result);
+          }
+          break;
+        }
       default:
         result.notImplemented();
         break;
@@ -387,6 +403,7 @@ final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
   private void instantiateCamera(MethodCall call, Result result) throws CameraAccessException {
     String cameraName = call.argument("cameraName");
     String preset = call.argument("resolutionPreset");
+    String mode = call.argument("captureMode");
     boolean enableAudio = call.argument("enableAudio");
 
     TextureRegistry.SurfaceTextureEntry flutterSurfaceTexture =
@@ -397,6 +414,7 @@ final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
     CameraProperties cameraProperties =
         new CameraPropertiesImpl(cameraName, CameraUtils.getCameraManager(activity));
     ResolutionPreset resolutionPreset = ResolutionPreset.valueOf(preset);
+    CaptureMode captureMode = CaptureMode.valueOf(mode);
 
     camera =
         new Camera(

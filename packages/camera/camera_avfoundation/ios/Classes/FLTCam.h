@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy) void (^onFrameAvailable)(void);
 @property(nonatomic) FLTThreadSafeMethodChannel *methodChannel;
 @property(assign, nonatomic) FLTResolutionPreset resolutionPreset;
+@property(assign, nonatomic) FLTCaptureMode captureMode;
 @property(assign, nonatomic) FLTExposureMode exposureMode;
 @property(assign, nonatomic) FLTFocusMode focusMode;
 @property(assign, nonatomic) FLTFlashMode flashMode;
@@ -67,6 +68,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)unlockCaptureOrientationWithResult:(FLTThreadSafeFlutterResult *)result;
 - (void)setFlashModeWithResult:(FLTThreadSafeFlutterResult *)result mode:(NSString *)modeStr;
 - (void)setExposureModeWithResult:(FLTThreadSafeFlutterResult *)result mode:(NSString *)modeStr;
+- (void)setCaptureModeWithResult:(FLTThreadSafeFlutterResult *)result mode:(NSString *)modeStr;
 - (void)setFocusModeWithResult:(FLTThreadSafeFlutterResult *)result mode:(NSString *)modeStr;
 - (void)applyFocusMode;
 

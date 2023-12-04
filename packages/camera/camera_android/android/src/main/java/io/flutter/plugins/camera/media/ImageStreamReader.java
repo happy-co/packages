@@ -104,7 +104,6 @@ public class ImageStreamReader {
       } else {
         imageBuffer.put("planes", parsePlanesForYuvOrJpeg(image));
       }
-
       imageBuffer.put("width", image.getWidth());
       imageBuffer.put("height", image.getHeight());
       imageBuffer.put("format", dartImageFormat);

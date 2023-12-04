@@ -205,6 +205,7 @@ void main() {
         true,
         FocusMode.auto,
         true,
+        CaptureMode.video,
       ));
       await initializeFuture;
 
@@ -250,6 +251,7 @@ void main() {
         true,
         FocusMode.auto,
         true,
+        CaptureMode.video,
       ));
       await initializeFuture;
 
@@ -298,6 +300,7 @@ void main() {
         true,
         FocusMode.auto,
         true,
+        CaptureMode.video,
       ));
       await initializeFuture;
     });
@@ -318,6 +321,7 @@ void main() {
         true,
         FocusMode.auto,
         true,
+        CaptureMode.video,
       );
       await camera.handleCameraMethodCall(
           MethodCall('initialized', event.toJson()), cameraId);
@@ -472,6 +476,7 @@ void main() {
           true,
           FocusMode.auto,
           true,
+          CaptureMode.video,
         ),
       );
       await initializeFuture;
@@ -1143,6 +1148,27 @@ void main() {
       expect(channel.log, <Matcher>[
         isMethodCall('startImageStream', arguments: null),
         isMethodCall('stopImageStream', arguments: null),
+      ]);
+    });
+
+    test('Should set the capture mode', () async {
+      // Arrange
+      final MethodChannelMock channel = MethodChannelMock(
+        channelName: _channelName,
+        methods: <String, dynamic>{
+          'setCaptureMode': null,
+        },
+      );
+
+      // Act
+      await camera.setCaptureMode(cameraId, CaptureMode.photo);
+
+      // Assert
+      expect(channel.log, <Matcher>[
+        isMethodCall('setCaptureMode', arguments: <String, Object?>{
+          'cameraId': cameraId,
+          'mode': CaptureMode.photo.name
+        }),
       ]);
     });
   });

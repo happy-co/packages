@@ -50,6 +50,7 @@ class CameraValue {
     required this.focusPointSupported,
     required this.deviceOrientation,
     required this.description,
+    required this.captureMode,
     this.lockedCaptureOrientation,
     this.recordingOrientation,
     this.isPreviewPaused = false,
@@ -72,6 +73,7 @@ class CameraValue {
           deviceOrientation: DeviceOrientation.portraitUp,
           isPreviewPaused: false,
           description: description,
+          captureMode: CaptureMode.video,
         );
 
   /// True after [CameraController.initialize] has completed successfully.
@@ -148,6 +150,9 @@ class CameraValue {
   /// The properties of the camera device controlled by this controller.
   final CameraDescription description;
 
+  /// The current capture mode.
+  final CaptureMode captureMode;
+
   /// Creates a modified copy of the object.
   ///
   /// Explicitly specified fields get the specified value, all other fields get
@@ -171,6 +176,7 @@ class CameraValue {
     bool? isPreviewPaused,
     CameraDescription? description,
     Optional<DeviceOrientation>? previewPauseOrientation,
+    CaptureMode? captureMode,
   }) {
     return CameraValue(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -198,6 +204,7 @@ class CameraValue {
       previewPauseOrientation: previewPauseOrientation == null
           ? this.previewPauseOrientation
           : previewPauseOrientation.orNull,
+      captureMode: captureMode ?? this.captureMode,
     );
   }
 
@@ -219,7 +226,8 @@ class CameraValue {
         'recordingOrientation: $recordingOrientation, '
         'isPreviewPaused: $isPreviewPaused, '
         'previewPausedOrientation: $previewPauseOrientation, '
-        'description: $description)';
+        'description: $description, '
+        'captureMode: $captureMode)';
   }
 }
 
@@ -343,6 +351,8 @@ class CameraController extends ValueNotifier<CameraValue> {
             .then((CameraInitializedEvent event) => event.exposureMode),
         focusMode: await initializeCompleter.future
             .then((CameraInitializedEvent event) => event.focusMode),
+        captureMode: await initializeCompleter.future
+            .then((CameraInitializedEvent event) => event.captureMode),
         exposurePointSupported: await initializeCompleter.future.then(
             (CameraInitializedEvent event) => event.exposurePointSupported),
         focusPointSupported: await initializeCompleter.future
@@ -529,6 +539,12 @@ class CameraController extends ValueNotifier<CameraValue> {
         'startVideoRecording was called when a recording is already started.',
       );
     }
+    if (value.captureMode == CaptureMode.photo) {
+      throw CameraException(
+        'The camera is configured for still images.',
+        'startVideoRecording was called when the camera was configured for still images.',
+      );
+    }
 
     Function(CameraImageData image)? streamCallback;
     if (onAvailable != null) {
@@ -610,6 +626,13 @@ class CameraController extends ValueNotifier<CameraValue> {
         'resumeVideoRecording was called when no video is recording.',
       );
     }
+    if (value.captureMode == CaptureMode.photo) {
+      throw CameraException(
+        'The camera is configured for still images.',
+        'resumeVideoRecording was called when the camera was configured for still images.',
+      );
+    }
+
     try {
       await CameraPlatform.instance.resumeVideoRecording(_cameraId);
       value = value.copyWith(isRecordingPaused: false);
@@ -677,6 +700,18 @@ class CameraController extends ValueNotifier<CameraValue> {
     try {
       await CameraPlatform.instance.setExposureMode(_cameraId, mode);
       value = value.copyWith(exposureMode: mode);
+    } on PlatformException catch (e) {
+      throw CameraException(e.code, e.message);
+    }
+  }
+
+  /// Sets the capture mode for the camera.
+  Future<void> setCaptureMode(CaptureMode mode) async {
+    _throwIfNotInitialized('setCaptureMode');
+    try {
+      final Size? previewSize =
+          await CameraPlatform.instance.setCaptureMode(_cameraId, mode);
+      value = value.copyWith(captureMode: mode, previewSize: previewSize);
     } on PlatformException catch (e) {
       throw CameraException(e.code, e.message);
     }

@@ -10,8 +10,8 @@ void main() {
 
   group('CameraInitializedEvent tests', () {
     test('Constructor should initialize all properties', () {
-      const CameraInitializedEvent event = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+      const CameraInitializedEvent event = CameraInitializedEvent(1, 1024, 640,
+          ExposureMode.auto, true, FocusMode.auto, true, CaptureMode.video);
 
       expect(event.cameraId, 1);
       expect(event.previewWidth, 1024);
@@ -20,6 +20,7 @@ void main() {
       expect(event.focusMode, FocusMode.auto);
       expect(event.exposurePointSupported, true);
       expect(event.focusPointSupported, true);
+      expect(event.captureMode, CaptureMode.video);
     });
 
     test('fromJson should initialize all properties', () {
@@ -45,11 +46,19 @@ void main() {
 
     test('toJson should return a map with all fields', () {
       const CameraInitializedEvent event = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
 
       final Map<String, dynamic> jsonMap = event.toJson();
 
-      expect(jsonMap.length, 7);
+      expect(jsonMap.length, 8);
       expect(jsonMap['cameraId'], 1);
       expect(jsonMap['previewWidth'], 1024);
       expect(jsonMap['previewHeight'], 640);
@@ -57,49 +66,130 @@ void main() {
       expect(jsonMap['exposurePointSupported'], true);
       expect(jsonMap['focusMode'], 'auto');
       expect(jsonMap['focusPointSupported'], true);
+      expect(jsonMap['captureMode'], 'video');
     });
 
     test('equals should return true if objects are the same', () {
       const CameraInitializedEvent firstEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       const CameraInitializedEvent secondEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
 
       expect(firstEvent == secondEvent, true);
     });
 
     test('equals should return false if cameraId is different', () {
       const CameraInitializedEvent firstEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       const CameraInitializedEvent secondEvent = CameraInitializedEvent(
-          2, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        2,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
 
       expect(firstEvent == secondEvent, false);
     });
 
     test('equals should return false if previewWidth is different', () {
       const CameraInitializedEvent firstEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       const CameraInitializedEvent secondEvent = CameraInitializedEvent(
-          1, 2048, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        2048,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
 
       expect(firstEvent == secondEvent, false);
     });
 
     test('equals should return false if previewHeight is different', () {
       const CameraInitializedEvent firstEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       const CameraInitializedEvent secondEvent = CameraInitializedEvent(
-          1, 1024, 980, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        980,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
 
       expect(firstEvent == secondEvent, false);
     });
 
     test('equals should return false if exposureMode is different', () {
       const CameraInitializedEvent firstEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       const CameraInitializedEvent secondEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.locked, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.locked,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
 
       expect(firstEvent == secondEvent, false);
     });
@@ -107,34 +197,115 @@ void main() {
     test('equals should return false if exposurePointSupported is different',
         () {
       const CameraInitializedEvent firstEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       const CameraInitializedEvent secondEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, false, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        false,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
 
       expect(firstEvent == secondEvent, false);
     });
 
     test('equals should return false if focusMode is different', () {
       const CameraInitializedEvent firstEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       const CameraInitializedEvent secondEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.locked, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.locked,
+        true,
+        CaptureMode.video,
+      );
 
       expect(firstEvent == secondEvent, false);
     });
 
     test('equals should return false if focusPointSupported is different', () {
       const CameraInitializedEvent firstEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       const CameraInitializedEvent secondEvent = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, false);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        false,
+        CaptureMode.video,
+      );
+
+      expect(firstEvent == secondEvent, false);
+    });
+
+    test('equals should return false if captureMode is different', () {
+      const CameraInitializedEvent firstEvent = CameraInitializedEvent(
+        1,
+        1024,
+        640,
+        ExposureMode.locked,
+        true,
+        FocusMode.locked,
+        true,
+        CaptureMode.video,
+      );
+      const CameraInitializedEvent secondEvent = CameraInitializedEvent(
+        1,
+        1024,
+        640,
+        ExposureMode.locked,
+        true,
+        FocusMode.locked,
+        true,
+        CaptureMode.photo,
+      );
 
       expect(firstEvent == secondEvent, false);
     });
 
     test('hashCode should match hashCode of all properties', () {
       const CameraInitializedEvent event = CameraInitializedEvent(
-          1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
+        1,
+        1024,
+        640,
+        ExposureMode.auto,
+        true,
+        FocusMode.auto,
+        true,
+        CaptureMode.video,
+      );
       final int expectedHashCode = Object.hash(
           event.cameraId.hashCode,
           event.previewWidth,
@@ -142,7 +313,8 @@ void main() {
           event.exposureMode,
           event.exposurePointSupported,
           event.focusMode,
-          event.focusPointSupported);
+          event.focusPointSupported,
+          event.captureMode);
 
       expect(event.hashCode, expectedHashCode);
     });

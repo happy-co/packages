@@ -139,6 +139,7 @@ NSString *const errorMethod = @"error";
   _captureDevice = [AVCaptureDevice deviceWithUniqueID:cameraName];
   _flashMode = _captureDevice.hasFlash ? FLTFlashModeAuto : FLTFlashModeOff;
   _exposureMode = FLTExposureModeAuto;
+  _captureMode = FLTCaptureModeVideo;
   _focusMode = FLTFocusModeAuto;
   _lockedCaptureOrientation = UIDeviceOrientationUnknown;
   _deviceOrientation = orientation;
@@ -168,7 +169,9 @@ NSString *const errorMethod = @"error";
   _motionManager = [[CMMotionManager alloc] init];
   [_motionManager startAccelerometerUpdates];
 
-  if (![self setCaptureSessionPreset:_resolutionPreset withError:error]) {
+  if (![self setCaptureSessionWithResolutionPreset:_resolutionPreset
+                                   withCaptureMode:_captureMode
+                                         withError:error]) {
     return nil;
   }
   [self updateOrientation];
@@ -345,7 +348,8 @@ NSString *const errorMethod = @"error";
   return file;
 }
 
-- (BOOL)setCaptureSessionPreset:(FLTResolutionPreset)resolutionPreset withError:(NSError **)error {
+- (BOOL)setCaptureSessionForVideo:(FLTResolutionPreset)resolutionPreset
+                        withError:(NSError **)error {
   switch (resolutionPreset) {
     case FLTResolutionPresetMax:
     case FLTResolutionPresetUltraHigh:
@@ -399,6 +403,97 @@ NSString *const errorMethod = @"error";
         return NO;
       }
   }
+  return YES;
+}
+
+- (BOOL)setCaptureSessionForPhoto:(FLTResolutionPreset)resolutionPreset
+                        withError:(NSError **)error {
+  switch (resolutionPreset) {
+    case FLTResolutionPresetMax:
+    case FLTResolutionPresetUltraHigh:
+      if ([_videoCaptureSession canSetSessionPreset:AVCaptureSessionPresetPhoto]) {
+        _videoCaptureSession.sessionPreset = AVCaptureSessionPresetPhoto;
+        break;
+      }
+    case FLTResolutionPresetVeryHigh:
+      // Selects the appropriate 1080p resolution to match the desired aspect ratio for photos.
+      if ([_videoCaptureSession canSetSessionPreset:AVCaptureSessionPresetInputPriority]) {
+        for (AVCaptureDeviceFormat *format in _captureDevice.formats) {
+          CMVideoDimensions dimensions =
+              CMVideoFormatDescriptionGetDimensions(format.formatDescription);
+          if (dimensions.height == 1080) {
+            if (fabs((double)dimensions.width / dimensions.height - (double)4 / 3) < 0.01) {
+              if ([_captureDevice lockForConfiguration:nil]) {
+                _captureDevice.activeFormat = format;
+                [_captureDevice unlockForConfiguration];
+                return YES;
+              }
+            }
+          }
+        }
+      }
+    case FLTResolutionPresetHigh:
+      // Selects the appropriate 720p or 768p resolution to match the desired aspect ratio for
+      // photos.
+      if ([_videoCaptureSession canSetSessionPreset:AVCaptureSessionPresetInputPriority]) {
+        for (AVCaptureDeviceFormat *format in _captureDevice.formats) {
+          CMVideoDimensions dimensions =
+              CMVideoFormatDescriptionGetDimensions(format.formatDescription);
+          if (dimensions.height == 720 || dimensions.height == 768) {
+            if (fabs((double)dimensions.width / dimensions.height - (double)4 / 3) < 0.01) {
+              if ([_captureDevice lockForConfiguration:nil]) {
+                _captureDevice.activeFormat = format;
+                [_captureDevice unlockForConfiguration];
+                return YES;
+              }
+            }
+          }
+        }
+      }
+      // Most device format resolutions lower than 720/768p are generally 4:3 resolutions. Meaning
+      // the aspect ratio is the same regardless of the preset chosen.
+    case FLTResolutionPresetMedium:
+      if ([_videoCaptureSession canSetSessionPreset:AVCaptureSessionPreset640x480]) {
+        _videoCaptureSession.sessionPreset = AVCaptureSessionPreset640x480;
+        break;
+      }
+    case FLTResolutionPresetLow:
+      if ([_videoCaptureSession canSetSessionPreset:AVCaptureSessionPreset352x288]) {
+        _videoCaptureSession.sessionPreset = AVCaptureSessionPreset352x288;
+        break;
+      }
+    default:
+      if ([_videoCaptureSession canSetSessionPreset:AVCaptureSessionPresetLow]) {
+        _videoCaptureSession.sessionPreset = AVCaptureSessionPresetLow;
+      } else {
+        *error = [NSError errorWithDomain:NSCocoaErrorDomain
+                                     code:NSURLErrorUnknown
+                                 userInfo:@{
+                                   NSLocalizedDescriptionKey :
+                                       @"No capture session available for current capture session."
+                                 }];
+        return NO;
+      }
+  }
+  return YES;
+}
+
+- (BOOL)setCaptureSessionWithResolutionPreset:(FLTResolutionPreset)resolutionPreset
+                              withCaptureMode:(FLTCaptureMode)captureMode
+                                    withError:(NSError **)error {
+  // NSArray<AVCaptureDeviceFormat *> *formats = _captureDevice.formats;
+  if (captureMode == FLTCaptureModeVideo) {
+    if (![self setCaptureSessionForVideo:resolutionPreset withError:error]) {
+      return NO;
+    }
+  } else if (captureMode == FLTCaptureModePhoto) {
+    if (![self setCaptureSessionForPhoto:resolutionPreset withError:error]) {
+      return NO;
+    }
+  }
+  CMVideoDimensions previewDimensions =
+      CMVideoFormatDescriptionGetDimensions(_captureDevice.activeFormat.formatDescription);
+  _previewSize = CGSizeMake(previewDimensions.width, previewDimensions.height);
   _audioCaptureSession.sessionPreset = _videoCaptureSession.sessionPreset;
   return YES;
 }
@@ -852,6 +947,28 @@ NSString *const errorMethod = @"error";
       break;
   }
   [_captureDevice unlockForConfiguration];
+}
+
+- (void)setCaptureModeWithResult:(FLTThreadSafeFlutterResult *)result mode:(NSString *)modeStr {
+  FLTCaptureMode mode = FLTGetFLTCaptureModeForString(modeStr);
+  if (mode == FLTCaptureModeInvalid) {
+    [result sendError:[NSError errorWithDomain:NSCocoaErrorDomain
+                                          code:NSURLErrorUnknown
+                                      userInfo:@{
+                                        NSLocalizedDescriptionKey : [NSString
+                                            stringWithFormat:@"Unknown capture mode %@", modeStr]
+                                      }]];
+    return;
+  }
+  NSError *error;
+  _captureMode = mode;
+  [self setCaptureSessionWithResolutionPreset:_resolutionPreset
+                              withCaptureMode:_captureMode
+                                    withError:&error];
+  [result sendSuccessWithData:@{
+    @"previewWidth" : @(_previewSize.width),
+    @"previewHeight" : @(_previewSize.height),
+  }];
 }
 
 - (void)setFocusModeWithResult:(FLTThreadSafeFlutterResult *)result mode:(NSString *)modeStr {
